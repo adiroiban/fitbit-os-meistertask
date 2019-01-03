@@ -1,0 +1,2 @@
+export const TODOIST_CLIENT_ID = 'ADD-YOUR-ID'
+export const TODOIST_CLIENT_SECRET = 'ADD-YOUR-SECRET'
