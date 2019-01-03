@@ -1,17 +1,9 @@
-.defaultText {
-  font-size: 32;
-  font-family: System-Regular;
-  font-weight: regular;
-  text-length: 32;
-}
-
-
 .checkbox-tile-image image {
-    fill: fb-cyan;
+    fill: fb-red;
 }
 
 .checkbox-unselected-color image {
-    fill: fb-red;
+    fill: fb-cyan;
 }
 
 .tile-divider-bottom {
@@ -19,5 +11,5 @@
     y: 100%-2;
     width: 100%;
     height: 2;
-    fill: fb-gray;
+    fill: blue;
 }

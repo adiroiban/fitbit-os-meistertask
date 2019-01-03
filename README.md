@@ -20,3 +20,5 @@ start.
 
 I don't think that the app can run on the device in the background so there
 is no way to auto-sync it.
+
+Checked items are placed at the bottom to allow for easy undo.

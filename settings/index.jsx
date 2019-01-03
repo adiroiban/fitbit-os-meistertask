@@ -2,6 +2,16 @@ import { TODOIST_CLIENT_ID, TODOIST_CLIENT_SECRET } from "../common/constant"
 
 function settingsComponent(props) {
 
+  let oauth_status
+  let oauth_action
+  if (props.settingsStorage.getItem('access_token')) {
+    oauth_status = 'Token present'
+    oauth_action = 'Optional Re-Login'
+  } else {
+    oauth_status = 'Missing token'
+    oauth_action = 'Login Required'
+  }
+
   return (
     <Page>
       <Section
@@ -10,11 +20,16 @@ function settingsComponent(props) {
             Todoist Settings
           </Text>
         }
+      description="Only managing task for a single project is supported."
+      />
+     <TextInput
+        label="Project"
+        settingsKey="project"
       />
       <Oauth
-        title="OAuth Login"
-        label="Authentication status"
-        status={props.settings.oauth_status}
+        title="Todoist Authentication"
+        label={oauth_status}
+        status={oauth_action}
         authorizeUrl="https://todoist.com/oauth/authorize"
         requestTokenUrl="https://todoist.com/oauth/access_token"
         clientId={TODOIST_CLIENT_ID}

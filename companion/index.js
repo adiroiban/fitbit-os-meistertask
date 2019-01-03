@@ -21,6 +21,7 @@ settingsStorage.onchange = function(event) {
             })
             .catch(function(err){
                 settingsStorage.setItem('oauth_status', 'Login')
+                settingsStorage.setItem('access_token', '')
                 console.log('Err get token: '+ err);
             })
     }
