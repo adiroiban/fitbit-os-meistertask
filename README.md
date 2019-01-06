@@ -4,6 +4,7 @@ Unofficial Fitbit OS app for MeisterTask
 Not created by, affiliated with, or supported by MeisterTask.
 Not created by, affiliated with, or supported by Fitbit.
 
+
 ## Functionality
 
 For now, it will show tasks for a single project.
@@ -49,7 +50,7 @@ Completed items go to the bottom, for easy undo.
 
 Press the right-down button to go to the next section.
 
-Swipe an item from left to right on any item to move to the next section.
+Swipe an item from right to left on any item to move to the next section.
 It will not work if you don't have an item, as the action is only associated
 with list items.
 
@@ -64,14 +65,27 @@ drag refresh.
 It is possible for the same task to be updated independently on the device and
 on the remote API.
 
-A conflict is triggered when the status update date for a task as stored
-on the device is different than the remote API status update date.
+For now, there is no conflict resolution and if the task was updated on the
+device, it will overwrite the state on the remote API.
 
-MeisterTaks is nice enough and has a dedicated time to track only status
-changes.
 
-Below are the rules for resolving a conflict:
+## Development
 
-* device open - remote ANY -> remote state
-* device completed - remote open -> remote completed
-* device completed - remote ANY -> remote state
+This is not yet public.
+You can create your own MeisterTask API key and add it to common/constant.js
+
+
+# Screenshots
+
+Main app page with tasks list for a section.
+
+![main-app-screenshot](screenshots/device.png?raw=true "Main App")
+
+Notification on top of the page.
+
+![notification-screenshot](screenshots/notification.png?raw=true "Main App")
+
+
+Settings page.
+
+![settings-screenshot](screenshots/settings.png?raw=true "Settings Page")

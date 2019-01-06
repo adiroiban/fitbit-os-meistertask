@@ -435,6 +435,7 @@ Called when we have a left swipe gesture (from right to left).
 */
 function onSwipeLeft() {
     log('Swipe left')
+    goToNextSection()
 }
 
 /*
@@ -442,7 +443,6 @@ Called when we have a right swipe gesture (from left to right).
 */
 function onSwipeRight() {
     log('Swipe right')
-    goToNextSection()
 }
 
 /*
