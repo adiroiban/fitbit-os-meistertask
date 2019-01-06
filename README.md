@@ -49,7 +49,9 @@ Completed items go to the bottom, for easy undo.
 
 Press the right-down button to go to the next section.
 
-Swipe from left to right on any item to move to the next section.
+Swipe an item from left to right on any item to move to the next section.
+It will not work if you don't have an item, as the action is only associated
+with list items.
 
 Press the right-up button to refresh the list.
 

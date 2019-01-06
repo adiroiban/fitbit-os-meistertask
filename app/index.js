@@ -312,7 +312,7 @@ function onGotSections(result) {
         })
     })
 
-    sections.sort((a, b) => a.order > b.order)
+    sections.sort((a, b) => a.order - b.order)
 
     if (project_id != persistance.project_id) {
         // We have a new project.
