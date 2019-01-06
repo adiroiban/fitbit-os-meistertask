@@ -1,8 +1,8 @@
 {
-  "name": "firbit-os-todoist",
+  "name": "firbit-os-meistertask",
   "version": "0.1.0",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "devDependencies": {
     "@fitbit/sdk": "~3.0.0",
     "@fitbit/sdk-cli": "^1.5.0"
@@ -10,12 +10,15 @@
   "fitbit": {
     "appUUID": "e42540bd-d6ed-43f7-94be-e3fc0f1e27bb",
     "appType": "app",
-    "appDisplayName": "Todoist",
-    "iconFile": "resources/icon.png",
-    "wipeColor": "#ffffff",
-    "requestedPermissions": [],
+    "appDisplayName": "MeisterTask",
+    "iconFile": "resources/meistertask-icon-80.png",
+    "wipeColor": "#673ab7",
+    "requestedPermissions": [
+      "access_internet"
+    ],
     "buildTargets": [
-      "meson"
+      "meson",
+      "higgs"
     ],
     "i18n": {},
     "defaultLanguage": "en-US"

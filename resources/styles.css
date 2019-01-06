@@ -13,3 +13,26 @@
     height: 2;
     fill: blue;
 }
+
+#notification {
+    display: none;
+}
+
+#notification-text {
+    font-family: "System-Regular";
+    font-size: 20;
+    fill: white;
+    y: 22;
+    x: 50%;
+    text-anchor: middle;
+    text-length: 100;
+}
+
+#notification-box {
+    x: 0;
+    y: 0;
+    width: 100%;
+    height: 30;
+    fill-opacity: 1;
+    fill: "fb-blue";
+}

@@ -1,4 +1,10 @@
-import { TODOIST_CLIENT_ID, TODOIST_CLIENT_SECRET } from "../common/constant"
+import {
+  OAUTH_CLIENT_ID,
+  OAUTH_CLIENT_SECRET,
+  OAUTH_AUTHORIZE_URL,
+  OAUTH_TOKEN_URL,
+  OAUTH_SCOPE
+  } from "../common/constant"
 
 function settingsComponent(props) {
 
@@ -17,33 +23,47 @@ function settingsComponent(props) {
       <Section
         title={
           <Text bold align="center">
-            Todoist Settings
+            MeisterTask Settings
           </Text>
         }
-      description="Only managing task for a single project is supported."
-      />
-     <TextInput
-        label="Project"
-        settingsKey="project"
+      description="Only managing a single project is supported. Project needs to be active."
       />
       <Oauth
-        title="Todoist Authentication"
+        title="MeisterTask Authentication"
         label={oauth_status}
         status={oauth_action}
-        authorizeUrl="https://todoist.com/oauth/authorize"
-        requestTokenUrl="https://todoist.com/oauth/access_token"
-        clientId={TODOIST_CLIENT_ID}
-        clientSecret={TODOIST_CLIENT_SECRET}
-        scope="data:read_write"
+        authorizeUrl={OAUTH_AUTHORIZE_URL}
+        requestTokenUrl={OAUTH_TOKEN_URL}
+        clientId={OAUTH_CLIENT_ID}
+        clientSecret={OAUTH_CLIENT_SECRET}
+        scope={OAUTH_SCOPE}
         pkce="false"
         onReturn={async (data) => {
-          // Todoist required CORS and Fitbit Settings don't support CORS.
+          // CORS is required and Fitbit Settings don't support CORS.
           // The actual token generation is delegated to the companion.
           // So we just set the authentication code.
           // There is also data.state but we ignore it as I don't know how to
           // use it.
           props.settingsStorage.setItem('exchange_code', data.code);
         }}
+        // Fitbit OS don't support CORS, so we can't get the token from
+        // settings page.
+        // onAccessToken={async (data) => {
+        //     console.log('Got token' + data)
+        //     props.settingsStorage.setItem('access_token', data);
+        // }}
+      />
+
+     <TextInput
+        label="Project"
+        placeholder="Project name"
+        value={props.settings.project_name}
+        onChange={value => props.settingsStorage.setItem('project_name', value.name)}
+      />
+
+      <Button
+        label="Reset settings"
+        onClick={() => props.settingsStorage.clear()}
       />
 
     </Page>
