@@ -9,7 +9,8 @@ Not created by, affiliated with, or supported by Fitbit.
 
 For now, it will show tasks for a single project.
 It will show each section of the project in a separate view.
-Later it might be extended to show multiple projects.
+Later it might be extended to show multiple projects... but I guess that
+people will only want to have a few projects on the watch.
 
 I am creating it to help with getting a shopping list... and be able to go
 to the grocery without the phone... so without Internet.
@@ -39,7 +40,12 @@ the task list.
 For now, tasks can't be reordered from the device.
 They will observe the order as defined on the remote API.
 
-You can't add tasks from the device.
+You can't (yet) add tasks from the device.
+
+Battery status is updated every minute together with the clock.
+Battery status might be removed as is not critical... is there just as a
+reminder that when battery is low, Fitbit OS will show something here.
+So the app should not place anything critical there.
 
 
 ## UI/UX
@@ -89,3 +95,8 @@ Notification on top of the page.
 Settings page.
 
 ![settings-screenshot](screenshots/settings.png?raw=true "Settings Page")
+
+
+# Credits
+
+* UI header inspired by https://github.com/abhijitvalluri/fitbit-todo-list

@@ -1,9 +1,10 @@
+
 .checkbox-tile-image image {
-    fill: fb-red;
+    fill: "fb-red";
 }
 
 .checkbox-unselected-color image {
-    fill: fb-cyan;
+    fill: "fb-cyan";
 }
 
 .tile-divider-bottom {
@@ -11,28 +12,68 @@
     y: 100%-2;
     width: 100%;
     height: 2;
-    fill: fb-blue;
+    fill: "fb-blue";
 }
 
-#notification {
-    display: none;
-}
-
-#notification-text {
-    font-family: "System-Regular";
-    font-size: 20;
-    fill: white;
-    y: 22;
-    x: 50%;
-    text-anchor: middle;
-    text-length: 100;
-}
-
-#notification-box {
+#task-header {
+    width: 100%;
+    height: 24;
     x: 0;
     y: 0;
-    width: 100%;
-    height: 30;
-    fill-opacity: 1;
-    fill: "fb-blue";
+}
+
+/*
+The task list should be aligned with the header.
+*/
+#task-list {
+    x: 0;
+    y: 24;
+}
+
+#time {
+    font-family: "System-Bold";
+    text-anchor: end;
+    font-size: 20;
+    x: 100%-5;
+    y: 18;
+    fill: "white";
+}
+
+#battery-icon {
+   x: 0;
+   y: 0;
+}
+
+#battery-overlay {
+   y: 6;
+   height: 14;
+   fill: "black";
+}
+
+#top-title {
+    font-family: "System-Bold";
+    text-anchor: middle;
+    text-length: 100;
+    font-size: 20;
+    x: 50%;
+    y: 18;
+    fill: "white";
+}
+
+#connection-closed-text {
+    font-family: "Fabrikat-Black";
+    text-anchor: start;
+    text-length: 1;
+    font-size: 22;
+    fill: "fb-red";
+    x: 34;
+    y: 20;
+}
+
+#connection-closed-border {
+    x: 33;
+    y: 2;
+    height: 20;
+    width: 15;
+    fill: "fb-white";
 }

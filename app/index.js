@@ -5,6 +5,8 @@ import { me } from "appbit";
 import document from "document";
 import { peerSocket } from "messaging";
 import * as filesystem from "fs";
+import clock from 'clock'
+import { battery } from 'power'
 
 import { handleCommands, log, sendCommand } from '../common/util'
 
@@ -82,7 +84,7 @@ function persistanceLoad() {
         stored = filesystem.readFileSync(persitance_path, 'cbor')
     } catch(err) {
         // No persisted data. Just ignore and use the default value.
-        store = {}
+        stored = {}
     }
 
     persistance = {...persistance, ...stored}
@@ -107,12 +109,14 @@ peerSocket.onmessage = event => {
 // Ready to communicate with the companion.
 peerSocket.onopen = () => {
     log("App Socket Open");
+    connection_ui.style.display = 'none'
     onRequestTasks()
 };
 
 // Communication with the companion was closed.
 peerSocket.onclose = () => {
   log("App Socket Closed");
+    connection_ui.style.display = 'inline'
 };
 
 // Failed to send a message to the companion.
@@ -135,6 +139,63 @@ function send(name, payload) {
 // ------------- UI handling -------------
 //
 
+
+// Where time is displayed.
+let time_ui = document.getElementById("time")
+// Battery level indicator.
+let battery_overlay = document.getElementById('battery-overlay')
+let header_ui = document.getElementById('task-header')
+let header_animation = document.getElementById('header-animation')
+let connection_ui = document.getElementById('connection-closed')
+
+
+// Title of the screen.
+let title = 'Initializing...'
+let header_color = 'green'
+let title_ui = document.getElementById('top-title')
+
+
+// Widget showing the tasks.
+let task_list = document.getElementById('task-list')
+// List of task currently in the widget.
+let view_tasks = []
+
+/*
+Things to update at every minute.
+
+This is not called when display is off.
+*/
+clock.granularity = 'minutes'
+clock.ontick = (event) => {
+    // Update time.
+    let now = event.date
+    let hours = now.getHours();
+    let minutes = now.getMinutes();
+    minutes = minutes > 9 ? minutes : '0' + minutes
+    hours = hours > 9 ? hours : '0' + hours
+    time_ui.text =  hours + ":" + minutes;
+
+    // Update battery level.
+    // We have a white battery as the background and over it, show
+    // a black bar, or all red.
+    let charge_level = battery.chargeLevel
+    if (charge_level > 10) {
+        battery_overlay.style.fill = "black";
+        let width = Math.round((100 - charge_level) * 0.24);
+        battery_overlay.width = width;
+        battery_overlay.x = 26 - width;
+    } else {
+        // Battery is low.
+        // We might just hide the battery as Fitbit OS forces the
+        // low battery Icon.
+        battery_overlay.style.fill = 'red';
+        battery_overlay.width = 22
+        battery_overlay.x = 4
+    }
+
+}
+
+
 let last_mouse_down = null
 
 document.onkeypress = function(event) {
@@ -150,11 +211,6 @@ document.onkeypress = function(event) {
 
 }
 
-
-// Widget showing the tasks.
-let task_list = document.getElementById("task-list");
-// List of task currently in the widget.
-let view_tasks = []
 
 task_list.delegate = {
   getTileInfo: function(index) {
@@ -218,10 +274,24 @@ task_list.delegate = {
   }
 }
 
+
+/*
+Set the permanent title of the page.
+
+This will be reverted after notification.
+*/
+function setTitle(text, background) {
+    title = text
+    header_color = background
+
+    title_ui.text = text
+    header_ui.style.fill = background
+
+    header_animation.animate('enable')
+}
+
+
 function notificationShow(message, background) {
-    let notification = document.getElementById('notification')
-    let box = document.getElementById('notification-box')
-    let text = document.getElementById('notification-text')
     let box_color
 
     if (!background) {
@@ -230,16 +300,15 @@ function notificationShow(message, background) {
         box_color = background
     }
 
-    box.style.fill = box_color
+    header_ui.style.fill = box_color
 
-    text.text = message
-    notification.style.display = 'inline'
-    notification.animate('enabled')
+    title_ui.text = message
+
+    header_animation.animate('enable')
 }
 
 function notificationHide() {
-    let notification = document.getElementById('notification')
-    notification.style.display = 'none'
+    setTitle(title, header_color)
 }
 
 /*
@@ -250,6 +319,48 @@ function notificationSplash(duration, message, background) {
     setTimeout(notificationHide, duration)
 
 }
+
+/*
+Convert a HEX color to RGB value.
+*/
+function hexToRGB(hex) {
+    // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
+    var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+    hex = hex.replace(shorthandRegex, function(m, r, g, b) {
+        return r + r + g + g + b + b;
+    });
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return [
+        parseInt(result[1], 16),
+        parseInt(result[2], 16),
+        parseInt(result[3], 16)
+        ]
+}
+
+
+/*
+Return the HSP for HEX color.
+*/
+function getHSP(color) {
+    let color = hexToRGB(color)
+    // Variables for red, green, blue values
+    let red = color[0]
+    let green = color[1]
+    let blue = color[2]
+
+    // http://alienryderflex.com/hsp.html
+    return Math.sqrt(
+        0.299 * (red * red) +
+        0.587 * (green * green) +
+        0.114 * (blue * blue)
+        )
+}
+
+
+
+
+
+
 // It must be called AFTER delegate.
 // Trigger an initial task sorting.
 onTasksChange()
@@ -366,9 +477,7 @@ function onGotTasks(tasks) {
 
     persistance.tasks = updated_tasks
     onTasksChange()
-    notificationHide()
-    notificationSplash(
-        2000,
+    setTitle(
         persistance.active_section.name,
         persistance.active_section.color,
         )
@@ -471,8 +580,7 @@ function goToNextSection() {
         }
     }
     log(`New section ${JSON.stringify(persistance.active_section)} of ${JSON.stringify(persistance.sections)}`)
-    notificationSplash(
-        2000,
+    setTitle(
         persistance.active_section.name,
         persistance.active_section.color,
         )

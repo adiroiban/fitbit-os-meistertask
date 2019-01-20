@@ -1,5 +1,7 @@
 <svg>
+
   <defs>
+
     <symbol id="my-tile-item" href="#tile-list-item" focusable="false"
             pointer-events="none" system-events="all" display="none">
       <use id="checkbox-tile" href="#checkbox-tile">
@@ -7,20 +9,7 @@
       </use>
     </symbol>
 
-    <symbol id="notification-symbol">
-      <g id="notification-group">
-        <rect id="notification-box">
-            <text id="notification-text">Some text here</text>
-        </rect>
-        <animate attributeName="fill-opacity" begin="enable"
-            from="1" to="0" dur="3" final="restore" />
-
-      </g>
-    </symbol>
-
   </defs>
-
-  <use id="notification" href="#notification-symbol" width="100%" height="100%" />
 
   <use id="task-list" href="#tile-list">
     <var id="virtual" value="1" />
@@ -41,4 +30,22 @@
       <use id="my-pool[9]" href="#my-tile-item" class="tile-list-item" />
     </use>
   </use>
+
+
+  <g id="header-animation">
+    <rect id="task-header" />
+    <animate attributeName="opacity" begin="enable"
+        from="0.5" to="1" dur="1" final="keep" />
+  </g>
+  <text id="time">00:00</text>
+  <image id="battery-icon" height="24" width="32" href="battery.png" />
+  <rect id="battery-overlay" />
+  <text id="top-title-border">Loading...</text>
+
+  <g id="connection-closed">
+    <rect id="connection-closed-border" />
+    <text id="connection-closed-text">X</text>
+  </g>
+  <text id="top-title">Loading...</text>
+
 </svg>

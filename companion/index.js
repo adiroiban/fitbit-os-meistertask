@@ -3,7 +3,7 @@
 
 */
 import { settingsStorage } from 'settings'
-import { peerSocket } from "messaging";
+import { peerSocket } from "messaging"
 import { me } from 'companion'
 
 import {
@@ -108,8 +108,6 @@ settingsStorage.onchange = function(event) {
         // We got a new project name.
         validateProject()
     }
-
-
 }
 
 // Helper to get an OAuth token as the settings page is not able to do CORS.
