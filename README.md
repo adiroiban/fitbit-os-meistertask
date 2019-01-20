@@ -47,11 +47,6 @@ Battery status might be removed as is not critical... is there just as a
 reminder that when battery is low, Fitbit OS will show something here.
 So the app should not place anything critical there.
 
-A red X is show when device is not connected to the companion.
-
-A blue '@' is show when the device has sent a message and is waiting for a
-response from the companion.
-
 
 ## UI/UX
 
@@ -67,11 +62,18 @@ device.
 
 Press the right-up button to refresh the list.
 
-Drag the first item down to refresh the list. Tries to imitate the Android
-drag refresh.
+Drag the first item down to refresh the list.
+Tries to imitate the drag refresh.
+
+A red X is show when device is not connected to the companion.
+
+A blue '@' is show when the device has sent a message and is waiting for a
+response from the companion.
 
 
 ## Conflict resolution
+
+WIP.
 
 It is possible for the same task to be updated independently on the device and
 on the remote API.
@@ -91,10 +93,6 @@ You can create your own MeisterTask API key and add it to common/constant.js
 Main app page with tasks list for a section.
 
 ![main-app-screenshot](screenshots/device.png?raw=true "Main App")
-
-Notification on top of the page.
-
-![notification-screenshot](screenshots/notification.png?raw=true "Main App")
 
 
 Settings page.
