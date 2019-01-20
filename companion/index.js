@@ -268,6 +268,8 @@ function onUpdateTasks(local_tasks) {
         const path = '/tasks/' + local.i
         apiPUT(path, {'status': local.s})
     })
+    // Reply that command was received.
+    send('update_tasks')
 
 }
 

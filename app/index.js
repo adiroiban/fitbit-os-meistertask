@@ -63,11 +63,10 @@ let persistance = {
         'color': 'fb-red',
     }],
     'project_id': 0,
-    'active_section': {
-        'id': 0,
-        'name': 'NO SECTION YET',
-    },
+    'active_section': 'TO-BE-SET-NEXT',
 }
+persistance.active_section = persistance.sections[0]
+
 
 persistanceLoad()
 
@@ -102,6 +101,7 @@ function persistanceSave() {
 // Message is received from the companion
 peerSocket.onmessage = event => {
   log(`App received: ${JSON.stringify(event)}`);
+  loading_ui.style.display = 'none'
   handleCommands(event, COMMANDS)
 
 };
@@ -126,13 +126,16 @@ peerSocket.onerror = (error) => {
 
 function send(name, payload) {
     log(`App send: ${JSON.stringify(name)} ${JSON.stringify(payload)}`)
-
-    sendCommand(
+    let result = sendCommand(
         peerSocket,
         COMMANDS,
         name,
         payload,
         )
+    if (result) {
+        // Command was sent with success.
+        loading_ui.style.display = 'inline'
+    }
 }
 
 //
@@ -147,13 +150,14 @@ let battery_overlay = document.getElementById('battery-overlay')
 let header_ui = document.getElementById('task-header')
 let header_animation = document.getElementById('header-animation')
 let connection_ui = document.getElementById('connection-closed')
-
+let loading_ui = document.getElementById('loading')
 
 // Title of the screen.
 let title = 'Initializing...'
 let header_color = 'green'
 let title_ui = document.getElementById('top-title')
 
+let gesture_ui = document.getElementById('my-pool[3]')
 
 // Widget showing the tasks.
 let task_list = document.getElementById('task-list')
@@ -227,29 +231,14 @@ task_list.delegate = {
     title.text = data.name
     button.value = data.done
 
-    button.onmousedown = event => {
-        log(`Mouse down ${JSON.stringify(event)}`)
-        last_mouse_down = event
-    }
+    button.onmousedown = onMouseDown
 
     button.onmouseup = event => {
-        log(`Mouse up ${JSON.stringify(event)}`)
+        log(`Mouse up on button ${JSON.stringify(event)}`)
 
         if ((event.screenX == last_mouse_down.screenX) &&
                 (event.screenY == last_mouse_down.screenY)) {
             return onLongPress(info.index)
-        }
-
-        // We have a swipe right gesture.
-        if ((event.screenX - last_mouse_down.screenX > 200) &&
-                (Math.abs(event.screenY - last_mouse_down.screenY) < 100)) {
-            return onSwipeRight(info.index)
-        }
-
-        // We have a swipe left gesture.
-        if ((last_mouse_down.screenX - event.screenX > 200) &&
-                (Math.abs(event.screenY - last_mouse_down.screenY) < 100)) {
-            return onSwipeLeft(info.index)
         }
 
         // We have slide down reload gesture.
@@ -274,6 +263,36 @@ task_list.delegate = {
   }
 }
 
+
+/*
+Called when mouse was pressed on an element.
+*/
+function onMouseDown(event) {
+    log(`Mouse down ${JSON.stringify(event)}`)
+    last_mouse_down = event
+}
+
+/*
+Return `true` if a gesture was recognized.
+*/
+function onMouseUp(event, index) {
+    log(`Mouse up ${JSON.stringify(event)}`)
+
+    // We have a swipe right gesture.
+    if ((event.screenX - last_mouse_down.screenX > 200) &&
+            (Math.abs(event.screenY - last_mouse_down.screenY) < 100)) {
+        onSwipeRight(index)
+        return true
+    }
+
+    // We have a swipe left gesture.
+    if ((last_mouse_down.screenX - event.screenX > 200) &&
+            (Math.abs(event.screenY - last_mouse_down.screenY) < 100)) {
+        return onSwipeLeft(index)
+        return true
+    }
+    return false
+}
 
 /*
 Set the permanent title of the page.
@@ -490,7 +509,7 @@ Called when there is a request to update the tasks.
 */
 function onRequestTasks() {
     notificationShow('Loading tasks...')
-    send('request_tasks')
+    send('request_tasks', persistance.tasks)
 }
 
 /*
@@ -552,6 +571,7 @@ Called when we have a right swipe gesture (from left to right).
 */
 function onSwipeRight() {
     log('Swipe right')
+    goToPreviousSection()
 }
 
 /*
@@ -566,19 +586,51 @@ function onSwipeDown() {
 Go to the next section.
 */
 function goToNextSection() {
+    let index
     let active_id = persistance.active_section.id
     let sections = persistance.sections
 
-    // Switch to next section.
     for (var i = 0; i < sections.length; i++) {
         if (sections[i].id == active_id) {
-            let next = i + 1
-            if (next == sections.length) {
-                next = 0
-            }
-            persistance.active_section = sections[next]
+            index = i + 1
+            break
         }
     }
+
+    if (index > sections.length - 1) {
+        // We have loop.
+        index = 0
+    }
+
+    goToSection(index)
+}
+
+/*
+Move to the previous section.
+*/
+function goToPreviousSection() {
+    let index
+    let active_id = persistance.active_section.id
+    let sections = persistance.sections
+
+    for (var i = 0; i < sections.length; i++) {
+        if (sections[i].id == active_id) {
+            index = i - 1
+            break
+        }
+    }
+
+    if (index < 0) {
+        // We have loop.
+        index = sections.length - 1
+    }
+
+    goToSection(index)
+}
+
+
+function goToSection(index) {
+    persistance.active_section = persistance.sections[index]
     log(`New section ${JSON.stringify(persistance.active_section)} of ${JSON.stringify(persistance.sections)}`)
     setTitle(
         persistance.active_section.name,

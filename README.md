@@ -47,6 +47,11 @@ Battery status might be removed as is not critical... is there just as a
 reminder that when battery is low, Fitbit OS will show something here.
 So the app should not place anything critical there.
 
+A red X is show when device is not connected to the companion.
+
+A blue '@' is show when the device has sent a message and is waiting for a
+response from the companion.
+
 
 ## UI/UX
 
@@ -56,9 +61,9 @@ Completed items go to the bottom, for easy undo.
 
 Press the right-down button to go to the next section.
 
-Swipe an item from right to left on any item to move to the next section.
-It will not work if you don't have an item, as the action is only associated
-with list items.
+In the simulator I was able to emulate a swipe left or right action to
+go to previous section, but the swipe actions are crashing the app on the
+device.
 
 Press the right-up button to refresh the list.
 

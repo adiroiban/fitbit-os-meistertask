@@ -43,6 +43,7 @@ export function handleCommands(event, COMMANDS) {
 
     if (!handler) {
         log(`Unhandled command: ${JSON.stringify(event)}`)
+        return
     }
 
     // Call the command with the optional payload.
@@ -63,5 +64,7 @@ export function sendCommand(peerSocket, COMMANDS, name, payload) {
 
     if (peerSocket.readyState === peerSocket.OPEN) {
         peerSocket.send(data)
+        return true
     }
+    return false
 }

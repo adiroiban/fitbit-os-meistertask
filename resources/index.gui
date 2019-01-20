@@ -11,6 +11,8 @@
 
   </defs>
 
+  <rect id="background-gesture" pointer-events="visible"/>
+
   <use id="task-list" href="#tile-list">
     <var id="virtual" value="1" />
     <var id="reorder-enabled" value="0"/>
@@ -31,21 +33,26 @@
     </use>
   </use>
 
-
   <g id="header-animation">
-    <rect id="task-header" />
+    <rect id="task-header" pointer-events="visible"/>
     <animate attributeName="opacity" begin="enable"
         from="0.5" to="1" dur="1" final="keep" />
   </g>
   <text id="time">00:00</text>
   <image id="battery-icon" height="24" width="32" href="battery.png" />
   <rect id="battery-overlay" />
-  <text id="top-title-border">Loading...</text>
 
   <g id="connection-closed">
-    <rect id="connection-closed-border" />
+    <rect id="connection-closed-background" />
     <text id="connection-closed-text">X</text>
   </g>
-  <text id="top-title">Loading...</text>
+
+  <g id="loading">
+    <rect id="loading-background" />
+    <text id="loading-text">@</text>
+  </g>
+
+  <text id="top-title">Initializing...</text>
+
 
 </svg>
