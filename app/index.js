@@ -1,5 +1,8 @@
 /*
 Device side code for Fitbit OS Todoist app.
+
+Due to memory limitation the device side uses a different data structure than
+the remote API.
 */
 import { me } from "appbit";
 import document from "document";
@@ -7,11 +10,12 @@ import { peerSocket } from "messaging";
 import * as filesystem from "fs";
 import clock from 'clock'
 import { battery } from 'power'
+import { inbox, outbox } from 'file-transfer'
 
 import { handleCommands, log, sendCommand } from '../common/util'
 
 // Look at the widget implementation for debugging.
-// let target_path = "/mnt/sysassets/widgets/tile_list_widget.gui"
+// let target_path = "/mnt/sysassets/widgets/checkbox_tile_widget.gui"
 // let stats = filesystem.statSync(target_path);
 // let target_data = filesystem.readFileSync(target_path, "utf-8");
 // let cursor = 0
@@ -20,40 +24,29 @@ import { handleCommands, log, sendCommand } from '../common/util'
 //     cursor = cursor + 200
 // }
 
-//
-// ---------- Lifecycle handling -----------
-//
-// We want to todo-list to run for longer.
-const persitance_path = 'persistance.cbor'
+/*
+Commands used for live communication with the companion.
 
+Most of the communication is done via
+*/
 const COMMANDS = {
     'request_tasks': {
         'short': 'rt',
-    },
-    'got_tasks': {
-        'short': 'gt',
-        'handler': onGotTasks,
-    },
-    'got_sections': {
-        'short': 'gs',
-        'handler': onGotSections,
-    },
-    'update_tasks': {
-        'short': 'ut',
-    },
-}
+    },}
 
+// Where app data is stored.
+const PERSISTANCE_PATH = 'persistance.cbor'
 
 // Data which is persisted.
 // We initialize it here, and later is loaded.
 let persistance = {
     'tasks': [{
         'id': 0,
-        'section': 0,
         'name': 'NO TASK YET',
-        'local_update': 0,  // Date when changes where done on the device.
-        'remote_update': 0,  // Date when changed were done on the server.
-        'done': 0,  // 0 when not done, 1 when completed.
+        'section': 0,
+        'remote_update': 0,  // Date when changes where done on the remote API.
+        'device_update': 0,  // Date when changes where done on the device.
+        'done': 1,
         'order': 0,  // The order in the task list.
     }],
     'sections': [{
@@ -62,66 +55,49 @@ let persistance = {
         'order': 0,
         'color': 'fb-red',
     }],
-    'project_id': 0,
+    'active_project': {
+        'id': 0,
+        'remote_update': 0,
+    },
     'active_section': 'TO-BE-SET-NEXT',
 }
 persistance.active_section = persistance.sections[0]
 
 
-persistanceLoad()
-
-me.appTimeoutEnabled = false
-
-me.onunload = () => {
-  // We don't do nothing when app is closed as all data is save as soon as
-  // is changed.
-}
-
-function persistanceLoad() {
-    let stored
-    try {
-        stored = filesystem.readFileSync(persitance_path, 'cbor')
-    } catch(err) {
-        // No persisted data. Just ignore and use the default value.
-        stored = {}
-    }
-
-    persistance = {...persistance, ...stored}
-}
-
-function persistanceSave() {
-  filesystem.writeFileSync(persitance_path, persistance, 'cbor');
-}
-
-
 //
-// ----------- Companion communication -------------
+// ----------- Companion messaging -------------
 //
+// This is more like signaling, as the command might not be received and
+// companion is many time offline.
+//
+// Messages should be less than 1024 bytes.
 
 // Message is received from the companion
 peerSocket.onmessage = event => {
   log(`App received: ${JSON.stringify(event)}`);
-  loading_ui.style.display = 'none'
   handleCommands(event, COMMANDS)
 
 };
 
+let connected = false
 // Ready to communicate with the companion.
 peerSocket.onopen = () => {
-    log("App Socket Open");
+    log("App Socket Open")
+    connected = true
     connection_ui.style.display = 'none'
-    onRequestTasks()
 };
 
 // Communication with the companion was closed.
 peerSocket.onclose = () => {
-  log("App Socket Closed");
+    log("App Socket Closed")
+    connected = false
     connection_ui.style.display = 'inline'
 };
 
 // Failed to send a message to the companion.
 peerSocket.onerror = (error) => {
-  log("App socket error: " + error.code + " - " + error.message);
+    connected = false
+    log("App socket error: " + error.code + " - " + error.message)
 }
 
 function send(name, payload) {
@@ -132,11 +108,34 @@ function send(name, payload) {
         name,
         payload,
         )
-    if (result) {
-        // Command was sent with success.
-        loading_ui.style.display = 'inline'
+}
+
+
+//
+// ------ File-Transfer API
+//
+// This is the main data communication.
+//
+
+function processAllFiles() {
+    let name
+    while (name = inbox.nextFile()) {
+        let path = '/private/data/' + name
+        let data  = filesystem.readFileSync(path, 'cbor')
+        if (name == 'remote_sections') {
+            onRemoteSections(data)
+            return
+        }
+        if (name == 'remote_tasks') {
+            onRemoteTasks(data)
+            return
+        }
+        console.log(`Unknown file received: /private/data/$‌{fileName}`);
     }
 }
+inbox.addEventListener('newfile', processAllFiles)
+processAllFiles()
+
 
 //
 // ------------- UI handling -------------
@@ -150,7 +149,6 @@ let battery_overlay = document.getElementById('battery-overlay')
 let header_ui = document.getElementById('task-header')
 let header_animation = document.getElementById('header-animation')
 let connection_ui = document.getElementById('connection-closed')
-let loading_ui = document.getElementById('loading')
 
 // Title of the screen.
 let title = 'Initializing...'
@@ -200,19 +198,78 @@ clock.ontick = (event) => {
 }
 
 
-let last_mouse_down = null
-
 document.onkeypress = function(event) {
-    console.log("Key pressed: " + event.key)
+    log(`Key pressed: ${JSON.stringify(event)}`)
 
     if (event.key == 'down') {
-        onKeyDown()
+        _onKeyDownRaw(event)
     }
 
     if (event.key == 'up') {
+        _onKeyUpRaw(event)
+    }
+
+    if (event.key == 'back') {
+        _onKeyBackRaw(event)
+    }
+
+}
+
+
+/*
+Called when back button is pressed.
+*/
+let _scheduled_exit
+function _onKeyBackRaw(event) {
+    event.preventDefault()
+
+    let _onSingle = () => {
+        _scheduled_exit = null
+        onKeyBack()
+    }
+
+    if (_scheduled_exit) {
+        clearTimeout(_scheduled_exit)
+        _scheduled_exit = null
+        // We got double back.
+        onKeyBackDouble()
+    } else {
+        _scheduled_exit = setTimeout(_onSingle, 400)
+    }
+}
+
+function _onKeyUpRaw(event) {
+
+    let _onSingle = () => {
+        _scheduled_exit = null
         onKeyUp()
     }
 
+    if (_scheduled_exit) {
+        clearTimeout(_scheduled_exit)
+        _scheduled_exit = null
+        // We got double back.
+        onKeyUpDouble()
+    } else {
+        _scheduled_exit = setTimeout(_onSingle, 400)
+    }
+}
+
+function _onKeyDownRaw(event) {
+
+    let _onSingle = () => {
+        _scheduled_exit = null
+        onKeyDown()
+    }
+
+    if (_scheduled_exit) {
+        clearTimeout(_scheduled_exit)
+        _scheduled_exit = null
+        // We got double back.
+        onKeyDownDouble()
+    } else {
+        _scheduled_exit = setTimeout(_onSingle, 400)
+    }
 }
 
 
@@ -225,41 +282,60 @@ task_list.delegate = {
   },
   configureTile: function(tile, info) {
     let title = tile.getElementById('text')
-    let button = tile.firstChild
+    let check_unselected = tile.getElementById('check-unselected')
+    let check_selected = tile.getElementById('check-selected')
     let data = view_tasks[info.index]
 
     title.text = data.name
-    button.value = data.done
 
-    button.onmousedown = onMouseDown
+    let setCheckUI = () => {
+        if (data.done) {
+            check_unselected.style.display = 'none'
+            check_selected.style.display = 'inline'
+        } else {
+            check_unselected.style.display = 'inline'
+            check_selected.style.display = 'none'
+        }
+    }
 
-    button.onmouseup = event => {
-        log(`Mouse up on button ${JSON.stringify(event)}`)
+    // Do an initial update.
+    setCheckUI()
+
+
+    tile.onmousedown = onMouseDown
+
+    tile.onmouseup = event => {
+
+        let duration = new Date().getTime() - last_mouse_down.timestamp
+        log(`Mouse up on button (${duration}) ${JSON.stringify(event)}`)
 
         if ((event.screenX == last_mouse_down.screenX) &&
-                (event.screenY == last_mouse_down.screenY)) {
+            (event.screenY == last_mouse_down.screenY) &&
+            (duration > 400)
+                ) {
             return onLongPress(info.index)
         }
 
         // We have slide down reload gesture.
-        if ((info.index == 0) && (event.screenY > 100)) {
+        if ((info.index == 0) && (event.screenY > 140)) {
             return onSwipeDown()
         }
+
     }
 
-    button.onclick = event => {
-        if (data.done) {
-            data.done = 0
-        } else {
-            data.done = 1
-        }
-        data.local_update = new Date().toISOString()
+    tile.onclick = event => {
+        log(`Click on item ${JSON.stringify(data)}`)
 
-        // Allow for a bit of delay, as otherwise the items will be
-        // rearanged and click event sent to unwanted elements.
-        // It need to be more than 0.5 to allow for the full checkbox animation.
+        if (data.done) {
+            data.done = false
+        } else {
+            data.done = true
+        }
+        data.device_update = new Date().getTime()
+        setCheckUI()
         setTimeout(onTasksUpdate, 500)
     }
+
   }
 }
 
@@ -267,8 +343,10 @@ task_list.delegate = {
 /*
 Called when mouse was pressed on an element.
 */
+let last_mouse_down = null
 function onMouseDown(event) {
     log(`Mouse down ${JSON.stringify(event)}`)
+    event.timestamp = new Date().getTime()
     last_mouse_down = event
 }
 
@@ -286,7 +364,7 @@ function onMouseUp(event, index) {
     }
 
     // We have a swipe left gesture.
-    if ((last_mouse_down.screenX - event.screenX > 200) &&
+    if ((last_mouse_down.screeny - event.screenX > 200) &&
             (Math.abs(event.screenY - last_mouse_down.screenY) < 100)) {
         return onSwipeLeft(index)
         return true
@@ -377,14 +455,6 @@ function getHSP(color) {
 
 
 
-
-
-
-// It must be called AFTER delegate.
-// Trigger an initial task sorting.
-onTasksChange()
-
-
 //
 // ------------------------- App logic ----------------\
 //
@@ -393,6 +463,11 @@ onTasksChange()
 Called when the tasks were changed from external sources.
 */
 function onTasksChange() {
+
+    setTitle(
+        persistance.active_section.name,
+        persistance.active_section.color,
+        )
 
     view_tasks = []
     persistance.tasks.forEach((task) => {
@@ -418,9 +493,10 @@ function onTasksChange() {
 /*
 Called when tasks were updated by the device.
 */
+let scheduled_task_update
 function onTasksUpdate() {
     onTasksChange()
-    setTimeout(sendTasksUpdate, 500)
+    scheduled_task_update = setTimeout(sendTasksUpdate, 5000)
 }
 
 /*
@@ -429,87 +505,75 @@ Called when we got sections.
 This just record that data and does not act on it.
 got_tasks should follow .
 */
-function onGotSections(result) {
-    let project_id = result.p
-    let sections = []
+function onRemoteSections(result) {
+    console.log('Got sections')
 
-    result.s.forEach((section) => {
-        sections.push({
-            'id': section.i,
-            'name': section.n,
-            'order': section.o,
-            'color': section.c,
-        })
-    })
+    let project = result.shift()
 
-    sections.sort((a, b) => a.order - b.order)
+    result.sort((a, b) => a.order - b.order)
 
-    if (project_id != persistance.project_id) {
+    if (project.id != persistance.active_project.id) {
         // We have a new project.
-        persistance.active_section = sections[0]
+        persistance.active_section = result[0]
         persistance.tasks = []
     } else {
         // See if the current active section still exists.
+
         let active_id = persistance.active_section.id
         let section_found = false
-        sections.forEach((section) => {
+        result.forEach((section) => {
             if (section.id == active_id) {
                 section_found = true
             }
         })
         if (!section_found) {
             // When not found, start with the first section.
-            persistance.active_section = sections[0]
+            persistance.active_section = result[0]
         }
     }
 
-    persistance.project_id = project_id
-    persistance.sections = sections
+    persistance.active_project = project
+    persistance.sections = result
 
-    log(
-        `Got sections: ${JSON.stringify(sections)}\n' +
-        'Active:  ${JSON.stringify(persistance.active_section)}`
-        )
-
+    log(`Active: ${JSON.stringify(persistance.active_section)}`)
 }
 
 /*
 Called when we have received the tasks from the server.
-
-Tasks are sent by the companion and have short keys.
 */
-function onGotTasks(tasks) {
+function onRemoteTasks(tasks) {
+    log('Got tasks.')
     let updated_tasks = []
 
-    tasks.forEach((task) => {
-        const done = task.s == 1 ? 0 : 1
-        updated_tasks.push({
-            'id': task.i,
-            'section': task.c,
-            'name': task.n,
-            'done': done,
-            'order': task.o,
-            'remote_update': task.u,
-            'local_update': 0,
+
+    // We only construct based on the remote tasks.
+    // Any local task which is not on the remote api, will be ignored as
+    // it might have been deleted.
+    tasks.forEach((remote_task) => {
+        let peer_task
+        persistance.tasks.forEach((local_task) => {
+            if (local_task.id == remote_task.id) {
+                peer_task = local_task
+            }
         })
+
+        if (!peer_task || !peer_task.device_update) {
+            // New task or local task was not touched.
+            remote_task.device_update = 0
+        } else {
+            if (remote_task.remote_update < peer_task.device_update) {
+                // Device/local is newer..so we overwrite the state.
+                remote_task.done = peer_task.done
+            }
+            // Keep the update of the local one.
+            // Maybe this needs to be synced later.
+            remote_task.device_update = peer_task.device_update
+        }
+        updated_tasks.push(remote_task)
     })
 
     persistance.tasks = updated_tasks
     onTasksChange()
-    setTitle(
-        persistance.active_section.name,
-        persistance.active_section.color,
-        )
-
-
-}
-
-/*
-Called when there is a request to update the tasks.
-*/
-function onRequestTasks() {
-    notificationShow('Loading tasks...')
-    send('request_tasks', persistance.tasks)
 }
 
 /*
@@ -518,20 +582,43 @@ Send the local list of tasks as it was changes.
 We always send the full list of tasks, as if we send tasks one by miss.
 */
 function sendTasksUpdate() {
-    let updated_tasks = []
+    log('Sending device update')
+    outbox.enqueueFile(PERSISTANCE_PATH, 'device_state')
+    scheduled_task_update = null
+}
 
-    persistance.tasks.forEach((task) => {
-        const status = task.done ? 2: 1
-        updated_tasks.push({
-            'i': task.id,
-            'n': task.name,
-            's': status,
-            'u': task.remote_update,
-            'l': task.local_update,
-        })
-    })
+/*
+Called when back button is pressed once.
+*/
+function onKeyBack(event) {
+    log('Key back')
+    onExit()
+}
 
-    send('update_tasks', updated_tasks)
+/*
+Called when back button is pressed twice.
+*/
+function onKeyBackDouble(event) {
+    log('Key back double')
+}
+
+
+/*
+Called when app should end.
+
+This is reentrant as it is also called from unload.
+*/
+let _exiting = false
+function onExit() {
+    if (scheduled_task_update) {
+        clearTimeout(scheduled_task_update)
+    }
+    if (_exiting) {
+        return
+    }
+    _exiting = true
+    sendTasksUpdate()
+    me.exit()
 }
 
 /*
@@ -539,7 +626,15 @@ Called when up button is pressed.
 */
 function onKeyUp() {
     log('Key up')
-    onRequestTasks()
+
+    triggerSync()
+}
+
+function onKeyUpDouble() {
+    log('Key up double')
+    let d = new Date(persistance.active_project.remote_update)
+    let last_update = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()} ${d.getHours()}:${d.getMinutes()}`
+    notificationSplash(2000, last_update, 'fb-green')
 }
 
 /*
@@ -548,6 +643,11 @@ Called when down button is pressed.
 function onKeyDown() {
     log('Key down')
     goToNextSection()
+}
+
+function onKeyDownDouble() {
+    log('Key down double')
+    goToPreviousSection()
 }
 
 /*
@@ -579,7 +679,20 @@ Called when we have a down swipe gesture.
 */
 function onSwipeDown() {
     log('Swipe down')
-    onRequestTasks()
+    triggerSync()
+}
+
+
+function triggerSync() {
+    // We send our state...and this should trigger the companion to send
+    // the remote state.
+    sendTasksUpdate()
+
+    if (!connected) {
+        notificationSplash(2000, 'Not connected.', 'fb-red')
+    } else {
+        notificationShow('Refreshing...', 'fb-blue')
+    }
 }
 
 /*
@@ -638,3 +751,38 @@ function goToSection(index) {
         )
     onTasksChange()
 }
+
+//
+// ---------- Lifecycle handling -----------
+//
+
+
+persistanceLoad()
+
+me.appTimeoutEnabled = false
+
+me.onunload = () => {
+  // We don't do nothing when app is closed as all data is save as soon as
+  // is changed.
+  onExit()
+}
+
+function persistanceLoad() {
+    let stored
+    try {
+        stored = filesystem.readFileSync(PERSISTANCE_PATH, 'cbor')
+    } catch(err) {
+        // No persisted data. Just ignore and use the default value.
+        stored = {}
+    }
+
+    persistance = {...persistance, ...stored}
+}
+
+function persistanceSave() {
+  filesystem.writeFileSync(PERSISTANCE_PATH, persistance, 'cbor');
+}
+
+// It must be called AFTER delegate.
+// Trigger an initial task sorting.
+onTasksChange()

@@ -10,12 +10,21 @@ function settingsComponent(props) {
 
   let oauth_status
   let oauth_action
+
   if (props.settingsStorage.getItem('access_token')) {
     oauth_status = 'Token present'
     oauth_action = 'Optional Re-Login'
   } else {
     oauth_status = 'Missing token'
     oauth_action = 'Login Required'
+  }
+
+  let wake_interval_text
+  let wake_interval = props.settingsStorage.getItem('wake_interval')
+  if (wake_interval == 0) {
+    wake_interval_text = `Background sync: disabled`
+  } else{
+    wake_interval_text = `Background sync: ${wake_interval} (min).`
   }
 
   return (
@@ -44,7 +53,7 @@ function settingsComponent(props) {
           // So we just set the authentication code.
           // There is also data.state but we ignore it as I don't know how to
           // use it.
-          props.settingsStorage.setItem('exchange_code', data.code);
+          props.settingsStorage.setItem('authorization_code', data.code);
         }}
         // Fitbit OS don't support CORS, so we can't get the token from
         // settings page.
@@ -54,11 +63,24 @@ function settingsComponent(props) {
         // }}
       />
 
+    <Slider
+      label={wake_interval_text}
+      settingsKey="wake_interval"
+      min="0"
+      max="120"
+      step="15"
+    />
+
      <TextInput
         label="Project"
         placeholder="Project name"
         value={props.settings.project_name}
         onChange={value => props.settingsStorage.setItem('project_name', value.name)}
+      />
+
+      <Button
+        label="Reset session token"
+        onClick={() => props.settingsStorage.setItem('access_token', '')}
       />
 
       <Button

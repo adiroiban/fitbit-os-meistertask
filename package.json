@@ -14,7 +14,8 @@
     "iconFile": "resources/meistertask-icon-80.png",
     "wipeColor": "#673ab7",
     "requestedPermissions": [
-      "access_internet"
+      "access_internet",
+      "run_background"
     ],
     "buildTargets": [
       "meson",

@@ -2,16 +2,54 @@
 
   <defs>
 
-    <symbol id="my-tile-item" href="#tile-list-item" focusable="false"
-            pointer-events="none" system-events="all" display="none">
-      <use id="checkbox-tile" href="#checkbox-tile">
-        <set href="header/text" attributeName="text-buffer" to="Checkbox Item"/>
-      </use>
+    <symbol
+      id="check-unselected"
+      class="checkbox-unselected"
+      x="100%-50"
+      y="0"
+      width="50"
+      height="inherit"
+      >
+      <circle cx="50%" cy="50%" r="25" fill="inherit"/>
+      <circle cx="50%" cy="50%" r="20" fill="black"/>
+    </symbol>
+
+    <symbol
+      id="check-selected"
+      class="checkbox-selected"
+      x="100%-50"
+      width="50"
+      height="inherit"
+      >
+      <circle cx="50%" cy="50%" r="25" fill="inherit"/>
+      <circle cx="50%" cy="50%" r="20" fill="black"/>
+
+      <line stroke-width="12" x1="50%-2" y1="50%+10" x2="100%-6" y2="16" fill="black"/>
+      <line stroke-width="8" x1="50%-2" y1="50%+10" x2="100%-6" y2="16" fill="inherit"/>
+      <line stroke-width="8" x1="50%-12" y1="50%-6" x2="50%-2" y2="50%+10" fill="inherit"/>
+    </symbol>
+
+    <symbol
+      id="my-tile-item"
+      href="#tile-list-item"
+      class="tile-list-item"
+      pointer-events="visible"
+      display="none"
+      >
+      <textarea
+        id="text"
+        class="check-text"
+        x="5" y="5"
+        width="100%-50"
+        text-length="100"
+        ></textarea>
+      <use id="check-unselected" href="#check-unselected"/>
+      <use id="check-selected" href="#check-selected"/>
+
+      <rect class="tile-divider-bottom"/>
     </symbol>
 
   </defs>
-
-  <rect id="background-gesture" pointer-events="visible"/>
 
   <use id="task-list" href="#tile-list">
     <var id="virtual" value="1" />
@@ -20,23 +58,23 @@
     <var id="peek-enabled" value="1" />
 
     <use id="my-pool" href="#tile-list-pool">
-      <use id="my-pool[0]" href="#my-tile-item" class="tile-list-item" />
-      <use id="my-pool[1]" href="#my-tile-item" class="tile-list-item" />
-      <use id="my-pool[2]" href="#my-tile-item" class="tile-list-item" />
-      <use id="my-pool[3]" href="#my-tile-item" class="tile-list-item" />
-      <use id="my-pool[4]" href="#my-tile-item" class="tile-list-item" />
-      <use id="my-pool[5]" href="#my-tile-item" class="tile-list-item" />
-      <use id="my-pool[6]" href="#my-tile-item" class="tile-list-item" />
-      <use id="my-pool[7]" href="#my-tile-item" class="tile-list-item" />
-      <use id="my-pool[8]" href="#my-tile-item" class="tile-list-item" />
-      <use id="my-pool[9]" href="#my-tile-item" class="tile-list-item" />
+      <use id="my-pool[0]" href="#my-tile-item" />
+      <use id="my-pool[1]" href="#my-tile-item"/>
+      <use id="my-pool[2]" href="#my-tile-item"/>
+      <use id="my-pool[3]" href="#my-tile-item"/>
+      <use id="my-pool[4]" href="#my-tile-item"/>
+      <use id="my-pool[5]" href="#my-tile-item"/>
+      <use id="my-pool[6]" href="#my-tile-item"/>
+      <use id="my-pool[7]" href="#my-tile-item"/>
+      <use id="my-pool[8]" href="#my-tile-item"/>
+      <use id="my-pool[9]" href="#my-tile-item"/>
     </use>
   </use>
 
   <g id="header-animation">
     <rect id="task-header" pointer-events="visible"/>
     <animate attributeName="opacity" begin="enable"
-        from="0.5" to="1" dur="1" final="keep" />
+        from="1" to="0.6" dur="1.5" easing="ease-out" final="keep" />
   </g>
   <text id="time">00:00</text>
   <image id="battery-icon" height="24" width="32" href="battery.png" />
@@ -45,11 +83,6 @@
   <g id="connection-closed">
     <rect id="connection-closed-background" />
     <text id="connection-closed-text">X</text>
-  </g>
-
-  <g id="loading">
-    <rect id="loading-background" />
-    <text id="loading-text">@</text>
   </g>
 
   <text id="top-title">Initializing...</text>
