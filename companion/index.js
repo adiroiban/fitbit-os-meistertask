@@ -289,11 +289,10 @@ async function onDeviceState(device_state) {
             return
         }
 
-        const path = '/tasks/' + device_task.id
         let status = device_task.done ? 2 : 1
         log(`Send update for ${JSON.stringify(device_task)}`)
 
-        apiPUT(path, {'status': status})
+        apiPUT('/tasks/' + device_task.id, {'status': status})
             .then(result => log(`Update sent ${JSON.stringify(result)}`))
     })
 

@@ -41,6 +41,15 @@ Battery status might be removed as is not critical... is there just as a
 reminder that when battery is low, Fitbit OS will show something here.
 So the app should not place anything critical there.
 
+The companion is automatically started in the background when it will receive
+a file, even if the app is not running on the device.
+It will auto-sync but can only run for 15 seconds.
+
+The companion can run in the background at configured time and will
+get the remote state.
+Make sure you have a fast connection, as it can only run in the background
+for 15 seconds.
+
 
 ## UI/UX
 
@@ -76,7 +85,7 @@ This is not yet public.
 You can create your own MeisterTask API key and add it to common/constant.js
 
 
-# Screenshots
+## Screenshots
 
 Main app page with tasks list for a section.
 
@@ -87,6 +96,20 @@ Settings page.
 ![settings-screenshot](screenshots/settings.png?raw=true "Settings Page")
 
 
-# Credits
+## TODO
+
+* See OAuth token refresh API. Token don't have expire.
+* Add tasks from the device - first add a keyboard
+* View task description
+  * Maybe long press on the task
+  * Show only first 100 characters
+* Add notes section
+  * a section without checkbox
+  * notes have title and description
+  * Hardcoded to a section name "Notes"
+* Archive/delete a task/notes - Maybe swipe in some direction
+
+
+## Credits
 
 * UI header inspired by https://github.com/abhijitvalluri/fitbit-todo-list
