@@ -99,14 +99,18 @@ Settings page.
 ## TODO
 
 * See OAuth token refresh API. Token don't have expire.
+
 * Add tasks from the device - first add a keyboard
+
 * View task description
   * Maybe long press on the task
   * Show only first 100 characters
+
 * Add notes section
   * a section without checkbox
   * notes have title and description
   * Hardcoded to a section name "Notes"
+
 * Archive/delete a task/notes - Maybe swipe in some direction
 
 

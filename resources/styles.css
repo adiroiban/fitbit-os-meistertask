@@ -29,14 +29,6 @@
     fill: "fb-slate";
 }
 
-#background-gesture {
-    x: 0;
-    y: 0;
-    width: 100%;
-    height: 100%;
-}
-
-
 #task-header {
     width: 100%;
     height: 24;
@@ -97,27 +89,5 @@ The task list should be aligned with the header.
     y: 2;
     height: 20;
     width: 15;
-    fill: "fb-white";
-}
-
-#loading {
-    display: 'none';
-}
-
-#loading-text {
-    font-family: "System-Bold";
-    text-anchor: start;
-    text-length: 1;
-    font-size: 22;
-    fill: "fb-blue";
-    x: 34;
-    y: 17;
-}
-
-#loading-background {
-    x: 33;
-    y: 4;
-    height: 18;
-    width: 18;
     fill: "fb-white";
 }

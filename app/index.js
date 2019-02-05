@@ -281,10 +281,19 @@ task_list.delegate = {
     }
   },
   configureTile: function(tile, info) {
+    let data = view_tasks[info.index]
+
     let title = tile.getElementById('text')
     let check_unselected = tile.getElementById('check-unselected')
     let check_selected = tile.getElementById('check-selected')
-    let data = view_tasks[info.index]
+
+    if (!data) {
+        // We are at the footer.
+        title.text = ''
+        check_selected.style.display = 'none'
+        check_unselected.style.display = 'none'
+        return
+    }
 
     title.text = data.name
 
@@ -486,7 +495,9 @@ function onTasksChange() {
         return 0
     })
 
-    task_list.length = view_tasks.length;
+    // The virtual tile view is moved down to not overlap with the header
+    // so in order to compensate bottom scroll we add a footer
+    task_list.length = view_tasks.length + 1;
     persistanceSave()
 }
 
