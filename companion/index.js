@@ -21,9 +21,9 @@ import { handleCommands, log, sendCommand } from '../common/util'
 // The messages sent by the companion have short key names to reduce the size.
 // Limit at 1024 bytes per message.
 const COMMANDS = {
-    'request_tasks': {
-        'short': 'rt',
-        'handler': getRemoteTasks,
+    'request_remote_state': {  // not used. Here for documentation.
+        'short': 'rrs',
+        'handler': getRemoteState,
     },
 }
 // Check for updates every 60.
@@ -86,8 +86,6 @@ async function processAllFiles() {
 
 // Process new files as they are received
 inbox.addEventListener('newfile', processAllFiles);
-
-
 
 
 //
@@ -167,7 +165,7 @@ function validateProject() {
                 log(`Got new project ${project.name} ${project.id}`)
                 settingsStorage.setItem('project_id', project.id)
                 // Now that we have a new project, trigger the tasks update.
-                getRemoteTasks()
+                getRemoteState()
             })
 
             if (settingsStorage.getItem('project_id') == 0) {
@@ -188,21 +186,25 @@ another message.
 It returns the list of remote tasks... but it also sends the sections and
 their remote tasks.
 */
-async function getRemoteTasks() {
+async function getRemoteState() {
     const project_id = settingsStorage.getItem('project_id')
+
+    let remote_state = {
+        'sections': [],
+        'tasks': [],
+        'project': {
+            'id': project_id,
+            'remote_update': new Date().getTime(),
+        },
+    }
 
     try {
         let result = await apiGET(`/projects/${project_id}/sections`)
         log(`Got sections ${JSON.stringify(result)}`)
         let sections = []
-        // The first element is the project data.
-        sections.push({
-            'id': project_id,
-            'remote_update': new Date().getTime(),
-        })
         result.forEach((section) => {
             // See app code for section fields.
-            sections.push({
+            remote_state.sections.push({
                 'id': section.id,
                 'name': section.name,
                 'order': Math.floor(section.sequence),
@@ -227,7 +229,7 @@ async function getRemoteTasks() {
                 // We don't show delete or archived items.
                 return
             }
-            tasks.push({
+            remote_state.tasks.push({
                 'id': task.id,
                 'name': task.name,
                 'section': task.section_id,
@@ -236,11 +238,12 @@ async function getRemoteTasks() {
                 'order': Math.floor(task.sequence),
             })
         })
-        outbox.enqueue('remote_tasks', encode(tasks))
     } catch(error) {
         log('Fail to get tasks.\n'+ error)
     }
-    return tasks
+
+    outbox.enqueue('remote_state', encode(remote_state))
+    return remote_state
 }
 
 
@@ -252,15 +255,15 @@ async function onDeviceState(device_state) {
     // FIXME
     // Compare with remote tasks to avoid overwritng.
 
-    let remote_tasks
+    let remote_state
     try {
-        remote_tasks = await getRemoteTasks()
+        remote_state = await getRemoteState()
     } catch(error) {
         log('Fail to get remote tasks for update.\n'+ error)
         return
     }
 
-    log(`Remote tasks ${JSON.stringify(remote_tasks)}`)
+    log(`Remote ${JSON.stringify(remote_state)}`)
 
     device_state.tasks.forEach(function(device_task) {
         if (!device_task.device_update) {
@@ -270,7 +273,7 @@ async function onDeviceState(device_state) {
 
         // See if we have a corresponding remote task.
         let remote_task
-        remote_tasks.forEach((task) => {
+        remote_state.tasks.forEach((task) => {
             if (task.id == device_task.id) {
                 remote_task = task
             }
@@ -442,6 +445,6 @@ setWakeInterval()
 if (me.launchReasons.fileTransfer) {
     processAllFiles()
 } else {
-    getRemoteTasks()
+    getRemoteState()
     // me.yield()
 }

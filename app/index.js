@@ -27,19 +27,53 @@ import { handleCommands, log, sendCommand } from '../common/util'
 /*
 Commands used for live communication with the companion.
 
-Most of the communication is done via
+Most of the communication is done via the file-transfer API.
+
+These command are mostly for signaling.
 */
 const COMMANDS = {
-    'request_tasks': {
-        'short': 'rt',
-    },}
+    'request_remote_state': {  // This is not used... here as documentation.
+        'short': 'rrs',
+    },
+}
 
 // Where app data is stored.
 const PERSISTANCE_PATH = 'persistance.cbor'
 
 // Data which is persisted.
 // We initialize it here, and later is loaded.
+
+// Future format with multi-project support.
 let persistance = {
+    'tasks': {
+        0: {
+            'name': 'NO TASK YET',
+            'section': 0,
+            'remote_update': 0,  // Date when changes done on the remote API.
+            'device_update': 0,  // Date when changes done on the device.
+            'done': 1,
+            'order': 0,  // The order in the task list.
+        },
+    },
+    'sections': {
+        0: {
+            'id': 0,
+            'name': 'NO SECTION YET',
+            'order': 0,
+            'color': 'fb-red',
+        },
+    },
+    'projects': {
+        0: {
+            'name': 'NO PROJECT YET',
+            'remote_update': 0,
+        },
+    },
+    'active_project': 0,
+    'active_section': 0,
+}
+
+persistance = {
     'tasks': [{
         'id': 0,
         'name': 'NO TASK YET',
@@ -122,20 +156,14 @@ function processAllFiles() {
     while (name = inbox.nextFile()) {
         let path = '/private/data/' + name
         let data  = filesystem.readFileSync(path, 'cbor')
-        if (name == 'remote_sections') {
-            onRemoteSections(data)
-            return
-        }
-        if (name == 'remote_tasks') {
-            onRemoteTasks(data)
+        if (name == 'remote_state') {
+            onRemoteState(data)
             return
         }
         console.log(`Unknown file received: /private/data/$‌{fileName}`);
     }
 }
 inbox.addEventListener('newfile', processAllFiles)
-processAllFiles()
-
 
 //
 // ------------- UI handling -------------
@@ -507,32 +535,38 @@ Called when tasks were updated by the device.
 let scheduled_task_update
 function onTasksUpdate() {
     onTasksChange()
-    scheduled_task_update = setTimeout(sendTasksUpdate, 5000)
+    if (scheduled_task_update) {
+        clearTimeout(scheduled_task_update)
+    }
+
+    // Only send the changes to the device in 30 seconds.
+    // The changes are sent anyway when the app exists.
+    scheduled_task_update = setTimeout(sendTasksUpdate, 30000)
 }
 
 /*
-Called when we got sections.
-
-This just record that data and does not act on it.
-got_tasks should follow .
+Called when we got the remote state .
 */
-function onRemoteSections(result) {
-    console.log('Got sections')
+function onRemoteState(remote_state) {
+    console.log('Got remote')
 
-    let project = result.shift()
+    let project = remote_state.project
+    let remote_sections = remote_state.sections
+    let remote_tasks = remote_state.tasks
+    let updated_tasks = []
 
-    result.sort((a, b) => a.order - b.order)
+    remote_sections.sort((a, b) => a.order - b.order)
 
     if (project.id != persistance.active_project.id) {
         // We have a new project.
-        persistance.active_section = result[0]
+        persistance.active_section = remote_sections[0]
         persistance.tasks = []
     } else {
         // See if the current active section still exists.
 
         let active_id = persistance.active_section.id
         let section_found = false
-        result.forEach((section) => {
+        remote_sections.forEach((section) => {
             if (section.id == active_id) {
                 section_found = true
             }
@@ -543,24 +577,11 @@ function onRemoteSections(result) {
         }
     }
 
-    persistance.active_project = project
-    persistance.sections = result
-
-    log(`Active: ${JSON.stringify(persistance.active_section)}`)
-}
-
-/*
-Called when we have received the tasks from the server.
-*/
-function onRemoteTasks(tasks) {
-    log('Got tasks.')
-    let updated_tasks = []
-
 
     // We only construct based on the remote tasks.
     // Any local task which is not on the remote api, will be ignored as
     // it might have been deleted.
-    tasks.forEach((remote_task) => {
+    remote_tasks.forEach((remote_task) => {
         let peer_task
         persistance.tasks.forEach((local_task) => {
             if (local_task.id == remote_task.id) {
@@ -568,21 +589,27 @@ function onRemoteTasks(tasks) {
             }
         })
 
-        if (!peer_task || !peer_task.device_update) {
-            // New task or local task was not touched.
-            remote_task.device_update = 0
-        } else {
+        // We start with using the remote task and assume it was not changed
+        // locally.
+        remote_task.device_update = 0
+        if (peer_task && peer_task.device_update) {
+            // Local task was touched.
             if (remote_task.remote_update < peer_task.device_update) {
-                // Device/local is newer..so we overwrite the state.
+                // Device/local task is newer.
                 remote_task.done = peer_task.done
+                // Keep the update of the local one.
+                // It needs to be synced later.
+                remote_task.device_update = peer_task.device_update
             }
-            // Keep the update of the local one.
-            // Maybe this needs to be synced later.
-            remote_task.device_update = peer_task.device_update
         }
+
         updated_tasks.push(remote_task)
     })
 
+    log(`Active: ${JSON.stringify(persistance.active_section)}`)
+
+    persistance.active_project = project
+    persistance.sections = remote_sections
     persistance.tasks = updated_tasks
     onTasksChange()
 }
@@ -594,8 +621,9 @@ We always send the full list of tasks, as if we send tasks one by miss.
 */
 function sendTasksUpdate() {
     log('Sending device update')
-    outbox.enqueueFile(PERSISTANCE_PATH, 'device_state')
     scheduled_task_update = null
+    outbox.enqueueFile(PERSISTANCE_PATH, 'device_state')
+
 }
 
 /*
@@ -637,14 +665,22 @@ Called when up button is pressed.
 */
 function onKeyUp() {
     log('Key up')
-
     triggerSync()
 }
 
 function onKeyUpDouble() {
     log('Key up double')
     let d = new Date(persistance.active_project.remote_update)
-    let last_update = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()} ${d.getHours()}:${d.getMinutes()}`
+    let month = d.getMonth()
+    let day = d.getDate()
+    let hour = d.getHours()
+    let minute = d.getMinutes()
+    month = month < 10 ? '0' + month: month
+    day = day < 10 ? '0' + day: day
+    hour = hour < 10 ? '0' + hour: hour
+    minute = minute < 10 ? '0' + minute: minute
+
+    let last_update = `${d.getFullYear()}-${month}-${day} ${hour}:${minute}`
     notificationSplash(2000, last_update, 'fb-green')
 }
 
@@ -702,6 +738,7 @@ function triggerSync() {
     if (!connected) {
         notificationSplash(2000, 'Not connected.', 'fb-red')
     } else {
+        // When remote tasks are received, this should update the header.
         notificationShow('Refreshing...', 'fb-blue')
     }
 }
@@ -767,9 +804,6 @@ function goToSection(index) {
 // ---------- Lifecycle handling -----------
 //
 
-
-persistanceLoad()
-
 me.appTimeoutEnabled = false
 
 me.onunload = () => {
@@ -794,6 +828,9 @@ function persistanceSave() {
   filesystem.writeFileSync(PERSISTANCE_PATH, persistance, 'cbor');
 }
 
-// It must be called AFTER delegate.
+
+persistanceLoad()
+processAllFiles()
 // Trigger an initial task sorting.
+// It must be called AFTER delegate.
 onTasksChange()
